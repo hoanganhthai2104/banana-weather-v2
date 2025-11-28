@@ -1,0 +1,43 @@
+# Ignore git files
+.git/
+.gitignore
+
+# Ignore local environment config
+.env
+dev.sh
+setup_sa.sh
+
+# Ignore docs and local tooling irrelevant to production
+docs/
+.beads/
+GEMINI.md
+README.md
+cors.json
+
+# Ignore backend build artifacts (Docker builds fresh)
+backend/server
+backend/go.sum
+
+# Ignore frontend source (Docker builds fresh or copies build artifacts)
+# Actually, deploy.sh builds frontend locally and copies it.
+# So we usually ignore source, but we need to COPY 'frontend/build/web' into context.
+# Standard approach: Include everything needed for Docker build.
+# Our Dockerfile copies 'backend/' and 'frontend/build/web'.
+# So we can ignore frontend source *if* we trust the local build,
+# BUT standard Cloud Build usually builds from source.
+# Wait, our 'deploy.sh' uses 'gcloud run deploy --source .'.
+# This uploads the source to Cloud Build.
+# Cloud Build runs the Dockerfile.
+# The Dockerfile has:
+#   COPY backend/ ./backend/
+#   COPY frontend/build/web /app/frontend/build/web
+# So we MUST upload 'backend/' and 'frontend/build/web'.
+# We CAN ignore 'frontend/lib', 'frontend/android', etc. to save upload time.
+
+frontend/
+!frontend/build/web/
+
+# Ignore IDE files
+.vscode/
+.idea/
+*.iml

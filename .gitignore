@@ -1,0 +1,44 @@
+# Binaries and build artifacts
+backend/server
+backend/main
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Flutter/Dart
+frontend/.dart_tool/
+frontend/.idea/
+frontend/build/
+frontend/android/
+frontend/ios/
+frontend/linux/
+frontend/macos/
+frontend/windows/
+frontend/flutter_*.png
+frontend/.flutter-plugins
+frontend/.flutter-plugins-dependencies
+frontend/.metadata
+frontend/.packages
+frontend/pubspec.lock
+
+# Environment variables
+.env
+
+# OS generated
+.DS_Store
+Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
+*.iml
+
+# Task Management (Beads)
+# We want to commit issues (.beads/beads.db, .beads/beads.jsonl) generally,
+# but maybe ignore temp files.
+.beads/daemon.lock
+.beads/daemon.pid
+.beads/daemon.log
+.beads/beads.db-shm
+.beads/beads.db-wal
