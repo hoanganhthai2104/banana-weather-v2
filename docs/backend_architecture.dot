@@ -1,0 +1,57 @@
+digraph BananaWeatherBackend {
+    rankdir=LR;
+    node [shape=rect, style=filled, fillcolor=white, fontname="Lato"];
+    edge [fontname="Lato"];
+
+    subgraph cluster_cloud {
+        label = "Google Cloud Platform";
+        bgcolor = "#f5f5f5";
+        
+        CloudRun [label="Cloud Run Service\n(Go Server)", shape=box3d, fillcolor="#e1f5fe"];
+        GCS [label="Cloud Storage\n(Bucket)", shape=cylinder, fillcolor="#e0e0e0"];
+        VertexAI [label="Vertex AI\n(Models)", shape=hexagon, fillcolor="#fff3e0"];
+        MapsAPI [label="Google Maps Platform", shape=component, fillcolor="#e8f5e9"];
+    }
+
+    subgraph cluster_server {
+        label = "Go Backend Internal";
+        bgcolor = "#e1f5fe";
+        
+        Main [label="main.go"];
+        Router [label="Chi Router"];
+        Handler [label="api/handler.go"];
+        
+        subgraph cluster_packages {
+            label = "Packages";
+            bgcolor = "#b3e5fc";
+            PkgGenAI [label="pkg/genai"];
+            PkgMaps [label="pkg/maps"];
+            PkgStorage [label="pkg/storage"];
+        }
+    }
+
+    // Flow
+    User [shape=circle, label="User"];
+    
+    User -> CloudRun [label="HTTP Request"];
+    CloudRun -> Main;
+    Main -> Router;
+    Router -> Handler [label="/api/weather\n/api/presets"];
+
+    // Handler Dependencies
+    Handler -> PkgMaps [label="Resolve Location"];
+    Handler -> PkgGenAI [label="Generate Content"];
+    Handler -> PkgStorage [label="Persist Assets"];
+
+    // External Calls
+    PkgMaps -> MapsAPI [label="Geocoding"];
+    
+    PkgGenAI -> VertexAI [label="Gemini 3 Pro (Img)\nVeo 3.1 (Vid)"];
+    
+    PkgStorage -> GCS [label="Upload Image/Video\nRead Presets"];
+    
+    // Data Flow
+    VertexAI -> PkgGenAI [label="Inline Bytes / GCS URI"];
+    PkgGenAI -> Handler [label="Results"];
+    Handler -> User [label="SSE Stream\n(Status, URL)"];
+}

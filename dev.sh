@@ -41,7 +41,8 @@ if [[ "$*" == *"--quick"* ]]; then
 else
   echo "------------------------------------------------"
   echo "🎨 Building Frontend (Flutter Web)..."
-  (cd frontend && flutter build web)
+  # Added flutter clean to ensure plugins (video_player) register correctly on web
+  (cd frontend && flutter clean && flutter pub get && flutter build web)
   if [ $? -ne 0 ]; then
     echo "Error: Flutter build failed."
     exit 1

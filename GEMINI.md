@@ -66,15 +66,42 @@ Deploy to Google Cloud Run:
 *   **Documentation:** Maintain `docs/` and `GEMINI.md` with architectural decisions.
 
 ### Go (Backend)
-*   **Structure:** `pkg/` for business logic (GenAI, Maps), `api/` for HTTP handlers.
-*   **GenAI:** Use `GenerateContent` for multimodal models (even for image generation).
+*   **Structure:** `pkg/` for business logic (GenAI, Maps, Storage), `api/` for HTTP handlers.
+*   **GenAI:**
+    *   **Images:** Use `GenerateContent` (Multimodal API) for Gemini 3 Pro Image.
+    *   **Videos:** Use `GenerateVideos` (Imagen API) for Veo 3.1.
+    *   **LRO Polling:** Use `s.client.Operations.GetVideosOperation` (Native SDK) or `aiplatform` SDK if needed for robust polling.
+    *   **Storage:** Use `OutputGCSURI` to write large assets directly to GCS. Use `pkg/storage` for manual uploads.
 *   **Logging:** Use `log` for tracking request flows and errors.
+*   **Static Serving:** Logic must support both local paths (`../frontend/build/web`) and Docker paths (`frontend/build/web`) for the frontend assets.
 
 ### Flutter (Frontend)
-*   **State:** Use `Provider` pattern.
-*   **Location:** Handle permissions gracefully with `geolocator`.
-*   **Style:** Dark mode aesthetic, focused on the image.
+*   **State:** Use `Provider` pattern (`WeatherProvider`, `ThemeProvider`).
+*   **API Calls:** Use relative paths (e.g., `/api/weather`) in Release mode.
+    ```dart
+    final String baseUrl = kDebugMode ? 'http://localhost:8080' : '';
+    ```
+*   **Video:** Use `VideoPlayerController.network` (String) for best Web compatibility. Always `setVolume(0.0)` to ensure auto-play works.
+*   **UI:**
+    *   **Non-Blocking:** Use `AnimatedOpacity` and Overlay Pills for status updates, keeping the main content visible.
+    *   **Theme:** Support Light/Dark modes with `ThemeProvider`.
+    *   **Style:** Clean, "Digital Picture Frame" aesthetic (no clutter).
+
+### Tooling
+*   **Preset Generator:** Use `cmd/generate_preset` to batch-generate content for the gallery.
+    *   Supports CSV input (`-csv`) for bulk processing.
+    *   Injects context (`-context`) for fictional locations.
+
+## Deployment Strategy
+
+*   **Build Process:** The frontend is built locally (`flutter build web`) by `deploy.sh` before deployment.
+*   **Artifacts:** `.gcloudignore` is configured to ignore the frontend *source* but explicitly include the `frontend/build/web` artifacts.
+*   **Containerization:** The `Dockerfile` copies the pre-built frontend assets into the Go server's container.
+*   **Identity:** Use a dedicated Service Account with `aiplatform.user` and `storage.objectAdmin` roles.
 
 ## Troubleshooting
-*   **500 Errors:** Check backend logs.
+*   **500 Errors:** Check backend logs via Cloud Logging.
 *   **"Model not found":** Ensure `GOOGLE_CLOUD_LOCATION` is set to `global` for `gemini-3-pro-image-preview`.
+*   **"Connection Refused":** Verify the Frontend is using relative URLs in production.
+*   **"UnimplementedError: init()":** Run `flutter clean` and rebuild to fix Web Plugin registration issues.
+*   **Video Not Playing:** Check CORS on the GCS bucket and ensure `setVolume(0.0)` is called.

@@ -3,15 +3,18 @@ package genai
 import (
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
+	"time"
 
 	"google.golang.org/genai"
 )
 
 type Service struct {
-	client *genai.Client
+	client     *genai.Client
+	bucketName string
 }
 
 func NewService(ctx context.Context) (*Service, error) {
@@ -23,13 +26,19 @@ func NewService(ctx context.Context) (*Service, error) {
 		return nil, fmt.Errorf("PROJECT_ID or GOOGLE_CLOUD_PROJECT not set")
 	}
 
+	bucketName := os.Getenv("GENMEDIA_BUCKET")
+	if bucketName == "" {
+		return nil, fmt.Errorf("GENMEDIA_BUCKET not set")
+	}
+
 	location := os.Getenv("GOOGLE_CLOUD_LOCATION")
 	if location == "" {
 		location = "us-central1"
 	}
 
-	log.Printf("Initializing GenAI Service. Project: %s, Location: %s", projectID, location)
+	log.Printf("Initializing GenAI Service. Project: %s, Location: %s, Bucket: %s", projectID, location, bucketName)
 
+	// Initialize GenAI Client
 	c, err := genai.NewClient(ctx, &genai.ClientConfig{
 		Backend:  genai.BackendVertexAI,
 		Project:  projectID,
@@ -38,12 +47,13 @@ func NewService(ctx context.Context) (*Service, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Service{client: c}, nil
+
+	return &Service{client: c, bucketName: bucketName}, nil
 }
 
 // GenerateImage generates a 9:16 image for the given city.
-func (s *Service) GenerateImage(ctx context.Context, city string) (string, error) {
-	prompt := fmt.Sprintf(`Present a clear, 45° top-down view of a vertical (9:16) isometric miniature 3D cartoon scene, highlighting iconic landmarks centered in the composition to showcase precise and delicate modeling.
+func (s *Service) GenerateImage(ctx context.Context, city string, extraContext string) (string, error) {
+	basePrompt := `Present a clear, 45° top-down view of a vertical (9:16) isometric miniature 3D cartoon scene, highlighting iconic landmarks centered in the composition to showcase precise and delicate modeling.
 
 The scene features soft, refined textures with realistic PBR materials and gentle, lifelike lighting and shadow effects. Weather elements are creatively integrated into the urban architecture, establishing a dynamic interaction between the city's landscape and atmospheric conditions, creating an immersive weather ambiance.
 
@@ -52,9 +62,14 @@ Use a clean, unified composition with minimalistic aesthetics and a soft, solid-
 Display a prominent weather icon at the top-center, with the date (x-small text) and temperature range (medium text) beneath it. The city name (large text) is positioned directly above the weather icon. The weather information has no background and can subtly overlap with the buildings.
 
 The text should match the input city's native language.
-Please retrieve current weather conditions for the specified city before rendering.
+Please retrieve current weather conditions for the specified city before rendering.`
 
-City name: %s`, city)
+	var prompt string
+	if extraContext != "" {
+		prompt = fmt.Sprintf("%s\n\nContext/Setting: %s\n\nCity name: %s", basePrompt, extraContext, city)
+	} else {
+		prompt = fmt.Sprintf("%s\n\nCity name: %s", basePrompt, city)
+	}
 
 	// Nano Banana Pro corresponds to 'gemini-3-pro-image-preview' or similar.
 	model := "gemini-3-pro-image-preview"
@@ -87,6 +102,93 @@ City name: %s`, city)
 	
 	log.Printf("No inline image data found in response")
 	return "", fmt.Errorf("no image data found in response")
+}
+
+// GenerateVideo generates a 9:16 video using Veo 3.1 Fast.
+// Returns: GS URI (string) or error.
+func (s *Service) GenerateVideo(ctx context.Context, inputImageURI string, prompt string) (string, error) {
+	model := "veo-3.1-fast-generate-preview"
+	
+	log.Printf("Generating video with model %s. Input: %s", model, inputImageURI)
+
+	// Construct the image object
+	image := &genai.Image{
+		GCSURI: inputImageURI,
+		MIMEType: "image/png",
+	}
+
+	// Config
+	config := &genai.GenerateVideosConfig{
+		AspectRatio: "9:16",
+		OutputGCSURI: fmt.Sprintf("gs://%s/videos/", s.bucketName),
+	}
+
+	// Call GenerateVideos
+	resp, err := s.client.Models.GenerateVideos(ctx, model, prompt, image, config)
+	if err != nil {
+		log.Printf("GenAI GenerateVideos failed: %v", err)
+		return "", fmt.Errorf("veo error: %w", err)
+	}
+
+	log.Printf("Veo operation started. ID: %s", resp.Name)
+
+	// Polling Loop using Native SDK method
+	ticker := time.NewTicker(5 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return "", fmt.Errorf("context cancelled during polling")
+		case <-ticker.C:
+			// Use native SDK polling
+			op, err := s.client.Operations.GetVideosOperation(ctx, resp, nil)
+			if err != nil {
+				log.Printf("Native SDK Polling failed: %v", err)
+				continue
+			}
+
+			if op.Done {
+				if op.Error != nil {
+					return "", fmt.Errorf("operation failed: %v", op.Error)
+				}
+				
+				if op.Response == nil || len(op.Response.GeneratedVideos) == 0 {
+					return "", fmt.Errorf("operation done but no videos found")
+				}
+
+				v := op.Response.GeneratedVideos[0]
+				
+				// Hack: Marshal/Unmarshal to bypass unknown struct field name
+				// The SDK is alpha and field names vary (GcsUri vs VideoUri vs Uri).
+				b, _ := json.Marshal(v)
+				var m map[string]interface{}
+				_ = json.Unmarshal(b, &m)
+				
+				// Top level check
+				uri, _ := m["gcsUri"].(string)
+				if uri == "" { uri, _ = m["videoUri"].(string) }
+				if uri == "" { uri, _ = m["uri"].(string) }
+
+				// Nested check (video.uri) - This matches the logs!
+				if uri == "" {
+					if vid, ok := m["video"].(map[string]interface{}); ok {
+						uri, _ = vid["uri"].(string)
+						if uri == "" { uri, _ = vid["gcsUri"].(string) }
+						if uri == "" { uri, _ = vid["videoUri"].(string) }
+					}
+				}
+
+				if uri != "" {
+					log.Printf("Video generated (GCS URI): %s", uri)
+					return uri, nil
+				}
+
+				return "", fmt.Errorf("video generated but URI is empty (JSON: %s)", string(b))
+			}
+			log.Printf("Still polling Veo...")
+		}
+	}
 }
 
 func ptr[T any](v T) *T {

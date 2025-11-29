@@ -3,49 +3,56 @@
 ## Main Structure
 
 *   **MaterialApp** (Root)
+    *   **Theme:** Light/Dark support (Lato font).
     *   **MultiProvider** (State Management)
-        *   `ChangeNotifierProvider<WeatherProvider>`
+        *   `ChangeNotifierProvider<WeatherProvider>`: Handles API logic, polling, and state.
+        *   `ChangeNotifierProvider<ThemeProvider>`: Handles theme toggling.
     *   **HomeScreen** (Main View)
 
-## HomeScreen Widget Tree
+## HomeScreen Widget Tree (`lib/screens/home_screen.dart`)
 
 *   **Scaffold**
-    *   `backgroundColor`: Black
-    *   **Center**
-        *   **AspectRatio** (9:16) - Enforces the vertical "Phone Wallpaper" ratio.
-            *   **Container** (Main Card)
-                *   `decoration`: Grey bg, rounded corners, shadow.
-                *   `clipBehavior`: HardEdge (clips content to rounded corners).
-                *   **Stack** (Layers)
-                    1.  **Image Layer** (`Positioned.fill`)
-                        *   *Condition:* `weatherProvider.imageBase64 != null`
-                        *   **Image.memory** (Base64 decoded image)
-                        *   *Else:* **Icon** (Image Not Supported placeholder)
-                    2.  **Loading Layer** (`Positioned.fill`)
-                        *   *Condition:* `weatherProvider.isLoading || _isInitializing`
-                        *   **Center** -> **CircularProgressIndicator**
-                    3.  **Gradient Overlay** (`Positioned` bottom)
-                        *   **Container** with `LinearGradient` (Transparent -> Black) for text readability.
-                    4.  **City Name** (`Positioned` top)
-                        *   *Condition:* `weatherProvider.city != null`
-                        *   **Text** (Custom Font: `Cinzel`)
-                    5.  **Error Message** (`Positioned` top-middle)
-                        *   *Condition:* `weatherProvider.error != null`
-                        *   **Container** (Red bg) -> **Text**
-                    6.  **Input Controls** (`Positioned` bottom)
-                        *   **Row**
-                            *   **Expanded** -> **TextField** (City Input)
-                                *   `controller`: `_controller`
-                                *   `onSubmitted`: Triggers fetch.
-                            *   **SizedBox** (Spacer)
-                            *   **FloatingActionButton**
-                                *   `onPressed`: Triggers fetch.
-                                *   `child`: Arrow Icon.
+    *   `backgroundColor`: Black (or Themed).
+    *   **AppBar**
+        *   **Title**: "Banana Weather 🍌🌤️"
+        *   **Actions**: Theme Toggle Icon.
+    *   **Body**: `Center` -> `AspectRatio` (9:16)
+        *   **Container** (Main Frame)
+            *   `color`: Black (Ensures no white flash during transitions).
+            *   `clipBehavior`: HardEdge (Rounded corners).
+            *   **Stack** (Layers)
+                1.  **Image Layer** (`Positioned.fill`)
+                    *   *Condition:* `weatherProvider.imageBase64 != null`
+                    *   **Image.memory** (Base64 decoded generated image).
+                    *   *Else:* **Image.asset** (`placeholder_vertical.png`).
+                2.  **Video Layer** (`Positioned.fill`)
+                    *   *Condition:* `_videoController != null` AND `initialized`.
+                    *   **FittedBox** -> **SizedBox** -> **VideoPlayer** (Looping, Muted).
+                3.  **Loading Overlay** (`Center`) - *Blocking*
+                    *   *Condition:* `weatherProvider.isLoading` (Initial fetch).
+                    *   **Container** (Dark Glass) -> `Column` -> `CircularProgressIndicator` + Text.
+                4.  **Status Pill** (`Positioned` Bottom) - *Non-Blocking*
+                    *   *Condition:* `!isLoading` AND `statusMessage != null` (Video Generation).
+                    *   **Container** (Pill Shape, Semi-transparent).
+                    *   **Row** -> `CircularProgressIndicator` (Small) + `Text` (Cycling messages e.g. "Teaching pixels to dance...").
+                5.  **Error Banner** (`Positioned` Top)
+                    *   *Condition:* `weatherProvider.error != null`.
+                    *   **Container** (Red) -> **Row** -> `Text` (Error) + `IconButton` (Close).
 
-## State Management (WeatherProvider)
+## State Management
 
-*   `city` (String?): Current city name.
-*   `imageBase64` (String?): Generated image data.
-*   `isLoading` (bool): Loading state.
-*   `error` (String?): Error message.
-*   `fetchWeather({city, lat, lng})`: Async method to update state.
+### `WeatherProvider` (`lib/providers/weather_provider.dart`)
+*   **State:**
+    *   `city` (String?): Resolved city name.
+    *   `imageBase64` (String?): Generated image.
+    *   `videoUrl` (String?): Public URL of generated video.
+    *   `isLoading` (bool): True only during initial location/image fetch.
+    *   `statusMessage` (String?): Streaming updates from backend ("Animating...").
+    *   `error` (String?): Error messages.
+*   **Methods:**
+    *   `fetchWeather({city, lat, lng})`: Connects to Backend SSE stream.
+    *   `clearError()`: Dismisses error.
+
+### `ThemeProvider` (`lib/providers/theme_provider.dart`)
+*   **State:** `ThemeMode` (Light/Dark).
+*   **Methods:** `toggleTheme()`.

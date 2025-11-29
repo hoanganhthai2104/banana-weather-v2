@@ -11,6 +11,7 @@ import (
 	"banana-weather/api"
 	"banana-weather/pkg/genai"
 	"banana-weather/pkg/maps"
+	"banana-weather/pkg/storage"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -25,21 +26,27 @@ func main() {
 	// Initialize Services
 	mapsService, err := maps.NewService()
 	if err != nil {
-		log.Printf("Warning: Maps service not initialized (check env vars): %v", err)
+		log.Fatalf("FATAL: Maps service failed to initialize. Check GOOGLE_MAPS_API_KEY. Error: %v", err)
 	}
 
-	// GenAI Service (requires context)
-	// We'll create a background context for initialization if needed, 
-	// but the client creation might be better in the handler or re-used.
-	// The client itself is thread-safe.
+	// GenAI Service
 	genaiService, err := genai.NewService(context.Background())
 	if err != nil {
-		log.Printf("Warning: GenAI service not initialized (check env vars): %v", err)
+		log.Fatalf("FATAL: GenAI service failed to initialize. Check PROJECT_ID/GOOGLE_CLOUD_PROJECT. Error: %v", err)
+	}
+
+	// Storage Service
+	storageService, err := storage.NewService(context.Background())
+	if err != nil {
+		log.Printf("Warning: Storage service failed to initialize (Check GENMEDIA_BUCKET): %v", err)
+		// Non-fatal for now, as Image-only mode still works? 
+		// Actually, new feature requires it. Let's warn but allow start for legacy compatibility if needed.
 	}
 
 	handler := &api.Handler{
-		Maps:  mapsService,
-		GenAI: genaiService,
+		Maps:    mapsService,
+		GenAI:   genaiService,
+		Storage: storageService,
 	}
 
 	r := chi.NewRouter()
@@ -49,6 +56,7 @@ func main() {
 	// API Routes
 	r.Route("/api", func(r chi.Router) {
 		r.Get("/weather", handler.HandleGetWeather)
+		r.Get("/presets", handler.HandleGetPresets)
 	})
 
 	// Static Files (Frontend)

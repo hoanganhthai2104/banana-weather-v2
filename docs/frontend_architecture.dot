@@ -1,0 +1,61 @@
+digraph BananaWeatherFrontend {
+    rankdir=TB;
+    node [shape=rect, style=filled, fillcolor=white, fontname="Lato"];
+    edge [fontname="Lato"];
+
+    subgraph cluster_app {
+        label = "MaterialApp";
+        bgcolor = "#e3f2fd";
+        
+        MultiProvider [label="MultiProvider", shape=folder, fillcolor="#bbdefb"];
+        
+        subgraph cluster_providers {
+            label = "Providers";
+            bgcolor = "#bbdefb";
+            WeatherProvider [label="WeatherProvider\n(State & API Logic)"];
+            ThemeProvider [label="ThemeProvider\n(Light/Dark)"];
+        }
+        
+        HomeScreen [label="HomeScreen", fillcolor="#fff9c4"];
+    }
+
+    subgraph cluster_home {
+        label = "HomeScreen Widgets";
+        bgcolor = "#fff9c4";
+        
+        Scaffold [label="Scaffold"];
+        AppBar [label="AppBar\n(Title, ThemeToggle, Drawer)"];
+        PresetDrawer [label="PresetDrawer\n(Gallery List)"];
+        
+        Stack [label="Stack (Main Content)"];
+        
+        ImageLayer [label="Image Layer\n(Image.memory / Image.asset)"];
+        VideoLayer [label="Video Layer\n(VideoPlayerController)"];
+        
+        StatusPill [label="Status Pill\n(Non-Blocking Overlay)"];
+        RegenerateBtn [label="Regenerate Button\n(FAB)"];
+        ErrorBanner [label="Error Banner\n(Dismissible)"];
+    }
+
+    MultiProvider -> WeatherProvider;
+    MultiProvider -> ThemeProvider;
+    MultiProvider -> HomeScreen;
+
+    HomeScreen -> Scaffold;
+    Scaffold -> AppBar;
+    AppBar -> PresetDrawer;
+    
+    Scaffold -> Stack;
+    Stack -> ImageLayer [label="Base Layer"];
+    Stack -> VideoLayer [label="On Top (If Ready)"];
+    Stack -> StatusPill [label="Bottom Center"];
+    Stack -> RegenerateBtn [label="Bottom Right"];
+    Stack -> ErrorBanner [label="Top Center"];
+
+    WeatherProvider -> ImageLayer [label="Updates imageBase64"];
+    WeatherProvider -> VideoLayer [label="Updates videoUrl"];
+    WeatherProvider -> StatusPill [label="Updates statusMessage"];
+    
+    PresetDrawer -> WeatherProvider [label="loadPreset()"];
+    RegenerateBtn -> WeatherProvider [label="fetchWeather()"];
+}

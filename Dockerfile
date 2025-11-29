@@ -9,6 +9,7 @@ COPY backend/ ./backend/
 # Build Go Server
 WORKDIR /app/backend
 RUN go mod download
+RUN go mod tidy
 RUN go build -o server main.go
 
 # Runtime Stage

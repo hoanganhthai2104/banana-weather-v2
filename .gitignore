@@ -42,3 +42,5 @@ Thumbs.db
 .beads/daemon.log
 .beads/beads.db-shm
 .beads/beads.db-wal
+
+.commit.txt

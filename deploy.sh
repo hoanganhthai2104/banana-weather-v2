@@ -48,27 +48,34 @@ REGION="${REGION:-us-central1}"
 SERVICE_NAME="${SERVICE_NAME:-banana-weather}"
 LOCATION="${GOOGLE_CLOUD_LOCATION:-us-central1}"
 
-# 3. Check for Required API Keys
+# 3. Resolve Bucket Name (Default: project-service)
+if [ -z "$GENMEDIA_BUCKET" ]; then
+  GENMEDIA_BUCKET="${PROJECT_ID}-${SERVICE_NAME}"
+  echo "Using default bucket name: $GENMEDIA_BUCKET"
+fi
+
+# 4. Check for Required API Keys
 if [ -z "$GOOGLE_MAPS_API_KEY" ]; then
   echo "Error: Missing GOOGLE_MAPS_API_KEY in .env"
   exit 1
 fi
 
-# 4. Build Frontend
+# 5. Build Frontend
 echo "🎨 Building Frontend (Flutter Web) for deployment..."
-(cd frontend && flutter build web)
+(cd frontend && flutter clean && flutter pub get && flutter build web)
 if [ $? -ne 0 ]; then
   echo "Error: Flutter build failed."
   exit 1
 fi
 
-# 5. Deploy
+# 6. Deploy
 # Resolve Service Account (Optional)
 SA_NAME="${SERVICE_NAME}-sa"
 SA_EMAIL="${SA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com"
 
 echo "Deploying $SERVICE_NAME to $REGION in project $PROJECT_ID..."
 echo "GenAI Location: $LOCATION"
+echo "Bucket: $GENMEDIA_BUCKET"
 
 ARGS=(
   "$SERVICE_NAME"
@@ -76,7 +83,7 @@ ARGS=(
   "--project" "$PROJECT_ID"
   "--region" "$REGION"
   "--allow-unauthenticated"
-  "--set-env-vars" "GOOGLE_MAPS_API_KEY=$GOOGLE_MAPS_API_KEY,GOOGLE_CLOUD_PROJECT=$PROJECT_ID,GOOGLE_CLOUD_LOCATION=$LOCATION"
+  "--set-env-vars" "GOOGLE_MAPS_API_KEY=$GOOGLE_MAPS_API_KEY,GOOGLE_CLOUD_PROJECT=$PROJECT_ID,GOOGLE_CLOUD_LOCATION=$LOCATION,GENMEDIA_BUCKET=$GENMEDIA_BUCKET"
 )
 
 # If you created a specific SA, uncomment the line below:
