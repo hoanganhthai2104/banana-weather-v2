@@ -30,19 +30,24 @@ digraph BananaWeatherBackend {
             PkgStorage [label="pkg/storage"];
             PkgDB [label="pkg/database"];
         }
+        
+        Tools [label="cmd/generate_preset\n(CLI Tool)", shape=parallelogram, fillcolor="#d1c4e9"];
     }
 
     // Flow
     User [shape=circle, label="User"];
+    Admin [shape=circle, label="Admin"];
     
     User -> CloudRun [label="HTTP Request"];
+    Admin -> Tools [label="CLI"];
+    
     CloudRun -> Main;
     Main -> Router;
     Router -> Handler [label="/api/weather\n/api/presets"];
 
     // Handler Dependencies
     Handler -> PkgMaps [label="Resolve Location"];
-    Handler -> PkgDB [label="Check Cache (TTL)"];
+    Handler -> PkgDB [label="Check Cache (TTL)\nFetch Presets"];
     Handler -> PkgGenAI [label="Generate Content\n(If Cache Miss)"];
     Handler -> PkgStorage [label="Persist Assets"];
 
@@ -59,4 +64,11 @@ digraph BananaWeatherBackend {
     PkgGenAI -> Handler [label="Results"];
     Handler -> PkgDB [label="Upsert Cache"];
     Handler -> User [label="SSE Stream\n(Status, URL)"];
+    
+    // Tooling Flow
+    Tools -> PkgGenAI;
+    Tools -> PkgStorage;
+    Tools -> PkgDB;
+    Tools -> GCS [label="Batch Upload"];
+    Tools -> Firestore [label="Batch Upsert"];
 }

@@ -112,9 +112,24 @@ We use the `bd` (Beads) tool for all issue tracking.
 *   **Containerization:** The `Dockerfile` copies the pre-built frontend assets into the Go server's container.
 *   **Identity:** Use a dedicated Service Account with `aiplatform.user` and `storage.objectAdmin` roles.
 
-## Troubleshooting
+### Troubleshooting
 *   **500 Errors:** Check backend logs via Cloud Logging.
-*   **"Model not found":** Ensure `GOOGLE_CLOUD_LOCATION` is set to `global` for `gemini-3-pro-image-preview`.
+*   **"Model not found"::** Ensure `GOOGLE_CLOUD_LOCATION` is set to `global` for `gemini-3-pro-image-preview`.
 *   **"Connection Refused":** Verify the Frontend is using relative URLs in production.
 *   **"UnimplementedError: init()":** Run `flutter clean` and rebuild to fix Web Plugin registration issues.
 *   **Video Not Playing:** Check CORS on the GCS bucket and ensure `setVolume(0.0)` is called.
+
+## Technical Guidelines & Lessons Learned
+
+### Google Cloud & GenAI
+*   **LRO Polling:** For Publisher Models (Veo, Imagen), standard GenAI SDKs may miss polling logic for custom operation types. Use `google.golang.org/api/aiplatform/v1beta1` with the **Regional Endpoint** (`us-central1-aiplatform...`) for reliable operation tracking if the high-level SDK fails.
+*   **Identities:** Always use a Service Account with Least Privilege. Document required roles (e.g. `datastore.user`, `aiplatform.user`) immediately in `setup_sa.sh`.
+
+### Frontend/Backend Contract
+*   **API Evolution:** If modifying an endpoint's response format (e.g. JSON fields), update the Frontend Model (`models/preset.dart`) and Provider (`weather_provider.dart`) **simultaneously** to prevent runtime breakages.
+*   **Environment Awareness:** Use `kDebugMode` in Flutter to toggle between `localhost` (Dev) and Relative Paths (Production). Never hardcode IP addresses.
+
+### Deployment
+*   **Artifacts:** Use `.gcloudignore` to explicitly whitelist build outputs (`!frontend/build/web`) while ignoring source (`frontend/`) to optimize Cloud Build context.
+*   **Clean Builds:** Always run `flutter clean` before a production build (`deploy.sh`) to ensure Web Plugins (`video_player`) register correctly.
+*   **Visual Regression:** When implementing overlays or opacity animations, verify the "Loading" and "Empty" states to ensure background colors don't flash (e.g. enforce `Colors.black` container background).
