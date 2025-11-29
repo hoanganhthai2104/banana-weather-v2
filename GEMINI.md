@@ -59,11 +59,24 @@ Deploy to Google Cloud Run:
 
 ## Coding Conventions
 
-### General
-*   **Task Management:** Use the `bd` tool for all work items.
-    *   **Workflow:** Create (`bd create`), Implement, Close (`bd close`).
-    *   **Priorities:** P0 (Critical) to P3 (Nice to have).
-*   **Documentation:** Maintain `docs/` and `GEMINI.md` with architectural decisions.
+### Task Management (`bd`)
+We use the `bd` (Beads) tool for all issue tracking.
+
+*   **Project Prefix:** `banana-weather`
+*   **Workflow:**
+    1.  **Create:** Use `bd create` for every unit of work.
+    2.  **Implement:** Do the work.
+    3.  **Close:** `bd close <id>` upon completion.
+*   **Conventions:**
+    *   **Descriptions:** **ALWAYS** include a `--description` explaining the "Why" and "What".
+    *   **IDs & Parents:**
+        *   Find IDs using `bd list`.
+        *   Link child tasks to Epics using `--parent <epic-id>`.
+        *   **Note:** If `bd` reports a "prefix mismatch" even when using the correct full ID (e.g., `banana-weather-123`), append the `--force` flag to bypass the check.
+    *   **Priorities:**
+        *   `P0`: Critical / Blocker.
+        *   `P1`: Core Feature.
+        *   `P2`: Enhancement / Polish.
 
 ### Go (Backend)
 *   **Structure:** `pkg/` for business logic (GenAI, Maps, Storage), `api/` for HTTP handlers.
