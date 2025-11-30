@@ -1,0 +1,77 @@
+digraph SystemArchitecture {
+    rankdir=TB;
+    node [fontname="Helvetica", shape=box, style=filled, fillcolor="white"];
+    edge [fontname="Helvetica", fontsize=10];
+
+    subgraph cluster_User {
+        label = "Client Side";
+        style = dashed;
+        color = gray;
+        
+        User [label="User", shape=ellipse, fillcolor="#e0e0e0"];
+        FlutterApp [label="Flutter Web App\n(The Portal)", fillcolor="#42A5F5", fontcolor=white];
+    }
+
+    subgraph cluster_Admin {
+        label = "Admin / Development";
+        style = dashed;
+        color = gray;
+        
+        CLI [label="CLI Tool\n(generate_preset)", fillcolor="#607D8B", fontcolor=white];
+        CSV [label="Presets CSV", shape=note];
+    }
+
+    subgraph cluster_GCP {
+        label = "Google Cloud Platform";
+        bgcolor = "#f5f5f5";
+        style = solid;
+        color = "#4285F4";
+
+        subgraph cluster_CloudRun {
+            label = "Cloud Run";
+            style = filled;
+            fillcolor = white;
+            
+            Backend [label="Go Backend\n(The Temple)", fillcolor="#00ADD8", fontcolor=white];
+        }
+
+        subgraph cluster_Data {
+            label = "Data & Storage";
+            style = filled;
+            fillcolor = white;
+
+            Firestore [label="Firestore\n(Metadata & Cache)", shape=cylinder, fillcolor="#FFCA28"];
+            GCS [label="Cloud Storage\n(Images & Videos)", shape=cylinder, fillcolor="#EA4335", fontcolor=white];
+        }
+
+        subgraph cluster_Services {
+            label = "External APIs";
+            style = filled;
+            fillcolor = white;
+
+            Maps [label="Google Maps API\n(Geocoding)", fillcolor="#34A853", fontcolor=white];
+            VertexAI [label="Vertex AI\n(Gemini 3 Pro / Veo)", fillcolor="#EA4335", fontcolor=white];
+        }
+    }
+
+    // User Interactions
+    User -> FlutterApp [label="Interacts"];
+    
+    // Frontend -> Backend
+    FlutterApp -> Backend [label="GET /api/weather (SSE)\nGET /api/presets", color="#42A5F5", penwidth=2];
+
+    // Backend Flows
+    Backend -> Maps [label="Geocode/Reverse Geocode"];
+    Backend -> Firestore [label="Read/Write Cache & Presets"];
+    Backend -> VertexAI [label="Generate Content"];
+    Backend -> GCS [label="Upload Assets"];
+
+    // CLI Flows
+    CSV -> CLI [label="Input"];
+    CLI -> VertexAI [label="Generate Content"];
+    CLI -> GCS [label="Upload Assets"];
+    CLI -> Firestore [label="Upsert Presets"];
+
+    // Asset Serving
+    FlutterApp -> GCS [label="Load Media (Public URL)", style=dashed];
+}
