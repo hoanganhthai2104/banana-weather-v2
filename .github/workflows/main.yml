@@ -3,9 +3,6 @@ name: Build Flutter Web
 on:
   push:
     branches: [main]
-    paths:
-      - 'frontend/**'
-      - '.github/workflows/build.yml'
 
 jobs:
   build:
@@ -24,10 +21,8 @@ jobs:
       - name: Build Flutter Web
         run: cd frontend && flutter build web --release
       
-      - name: Commit built files
-        run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git add frontend/build/web
-          git commit -m "Build Flutter Web" || true
-          git push
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: flutter-web-build
+          path: frontend/build/web/
