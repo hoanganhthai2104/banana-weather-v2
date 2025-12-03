@@ -1,0 +1,33 @@
+name: Build Flutter Web
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/build.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.16.0'
+      
+      - name: Get Flutter dependencies
+        run: cd frontend && flutter pub get
+      
+      - name: Build Flutter Web
+        run: cd frontend && flutter build web --release
+      
+      - name: Commit built files
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add frontend/build/web
+          git commit -m "Build Flutter Web" || true
+          git push
