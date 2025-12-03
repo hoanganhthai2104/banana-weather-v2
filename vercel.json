@@ -1,5 +1,3 @@
 {
-  "buildCommand": "cd frontend && flutter build web --release && cd ..",
-  "outputDirectory": "./frontend/build/web",
-  "installCommand": "npm install -g flutter"
+  "outputDirectory": "./frontend/build/web"
 }
