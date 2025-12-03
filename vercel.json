@@ -1,3 +1,6 @@
 {
-  "public": "frontend/web"
+  "public": "frontend/web",
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
 }
